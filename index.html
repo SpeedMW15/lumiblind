@@ -1,17 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<!-- Librería MQTT para conexión Cloud vía WebSockets -->
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LumiBlind v3.0 - Control de Persiana</title>
-  <link rel="manifest" href="manifest.json?v=4">
+  <link rel="manifest" href="manifest.json?v=5">
   <meta name="theme-color" content="#090d16">
+  <!-- Librería MQTT para conexión Cloud vía WebSockets -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     
-    /* Transición suave para toda la página */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #090d16;
@@ -25,7 +24,6 @@
       transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Tarjeta principal que también reacciona a la luz */
     .card {
       width: 100%;
       max-width: 440px;
@@ -57,7 +55,6 @@
       transition: color 0.6s ease;
     }
 
-    /* VENTANA E ILUMINACIÓN DEL SOL */
     .window-container {
       width: 100%;
       height: 200px;
@@ -142,7 +139,6 @@
       margin-bottom: 14px;
     }
 
-    /* TARJETAS DE CONTROL ADAPTABLES A LA LUZ */
     .control-card {
       background: #1f2937;
       padding: 12px 14px;
@@ -197,7 +193,7 @@
       font-family: monospace;
       font-size: 0.72rem;
       color: #38bdf8;
-      height: 60px;
+      height: 70px;
       overflow-y: auto;
       transition: all 0.6s ease;
     }
@@ -214,7 +210,6 @@
       ⚠️ <strong>¡ALERTA DE SEGURIDAD!</strong> Motor bloqueado por obstáculo.
     </div>
 
-    <!-- Ventana con Ilustración de Sol -->
     <div class="window-container" id="window-bg">
       <div id="sun-light" class="sun-light"></div>
       <div id="blind-curtain" class="blind-curtain"></div>
@@ -233,7 +228,7 @@
       </div>
     </div>
 
-    <button id="connect-btn" class="btn btn-connect" onclick="toggleConnect()">🔗 Conectar Bluetooth</button>
+    <button id="connect-btn" class="btn btn-connect" onclick="handleConnectClick()">🔗 Conectar Bluetooth</button>
 
     <div class="controls-grid">
       <button class="btn btn-action" id="btn-open" onclick="setBlindPosition(100, 'O')">▲ Abrir (100%)</button>
@@ -275,25 +270,25 @@
       <input type="range" id="threshold-slider" min="500" max="4000" step="100" value="2000" onchange="sendThreshold(this.value)" style="width: 100%; accent-color: #10b981;">
     </div>
 
-    <!-- Módulo de Configuración Wi-Fi para el Cliente -->
-<div class="control-card" id="card-wifi">
-  <label><span class="label-text">Configuración Wi-Fi (PWA)</span></label>
-  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
-    <input type="text" id="wifi-ssid" placeholder="Nombre de tu red Wi-Fi (SSID)" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
-    <input type="password" id="wifi-pass" placeholder="Contraseña de Wi-Fi" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
-    <button class="btn btn-action" onclick="saveWifiCredentials()" style="background: #10b981; color: white; font-size: 0.85rem; padding: 8px;">📶 Guardar y Conectar Wi-Fi</button>
-  </div>
-</div>
+    <div class="control-card" id="card-wifi">
+      <label><span class="label-text">Configuración Wi-Fi (PWA)</span></label>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+        <input type="text" id="wifi-ssid" placeholder="Nombre de tu red Wi-Fi (SSID)" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
+        <input type="password" id="wifi-pass" placeholder="Contraseña de Wi-Fi" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
+        <button class="btn btn-action" onclick="saveWifiCredentials()" style="background: #10b981; color: white; font-size: 0.85rem; padding: 8px;">📶 Guardar y Conectar Wi-Fi</button>
+      </div>
+    </div>
 
-    <div id="console-log" class="console-box">> LumiBlind v2.0 listo...</div>
+    <div id="console-log" class="console-box">> LumiBlind v3.0 listo...</div>
   </div>
 
   <script>
     const SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
     const CHARACTERISTIC_UUID_RX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
-    let bluetoothDevice;
-    let rxCharacteristic;
+    let bluetoothDevice = null;
+    let rxCharacteristic = null;
+    let mqttClient = null;
     let currentMode = "BLE";
 
     function log(msg) {
@@ -306,33 +301,27 @@
       Notification.requestPermission();
     }
 
-    // ILUMINACIÓN GLOBAL PROGRESIVA DE TODA LA PÁGINA Y PANTALLA
     function updateVisualBlind(percent) {
       document.getElementById('pos-val').innerText = `${percent}%`;
       const curtainHeight = 100 - percent;
       document.getElementById('blind-curtain').style.height = `${curtainHeight}%`;
 
-      // Opacidad del sol dentro de la ventana
       const lightOpacity = percent / 100;
       document.getElementById('sun-light').style.opacity = lightOpacity;
 
-      // CALCULAR COLORES PROGRESIVOS (DE NOCHE A DÍA)
       const ratio = percent / 100;
 
-      // Fondo de la página completo: de casi negro (#090d16) a blanco luz de día (#f8fafc)
       const rBg = Math.round(9 + (239 * ratio));
       const gBg = Math.round(13 + (237 * ratio));
       const bBg = Math.round(22 + (230 * ratio));
       document.body.style.background = `rgb(${rBg}, ${gBg}, ${bBg})`;
 
-      // Tarjeta principal: de gris oscuro (#111827) a blanco puro pulido (#ffffff)
       const rCard = Math.round(17 + (238 * ratio));
       const gCard = Math.round(24 + (231 * ratio));
       const bCard = Math.round(39 + (216 * ratio));
       const card = document.getElementById('app-card');
       card.style.background = `rgb(${rCard}, ${gCard}, ${bCard})`;
 
-      // Sombras de resplandor solar dorado/azul
       if (percent > 0) {
         card.style.boxShadow = `0 20px 60px rgba(251, 191, 36, ${0.15 * ratio}), 0 10px 30px rgba(56, 189, 248, ${0.2 * ratio})`;
         card.style.borderColor = `rgba(251, 191, 36, ${0.4 * ratio})`;
@@ -341,34 +330,19 @@
         card.style.borderColor = "#1f2937";
       }
 
-      // Cambiar textos e insumos de oscuro a contraste claro
       const textElements = document.querySelectorAll('.label-text, .header p');
       textElements.forEach(el => {
-        if (ratio > 0.5) {
-          el.style.color = "#4b5563"; // Texto gris oscuro en día
-        } else {
-          el.style.color = "#9ca3af"; // Texto gris claro en noche
-        }
+        el.style.color = ratio > 0.5 ? "#4b5563" : "#9ca3af";
       });
 
       const title = document.getElementById('app-title');
-      if (ratio > 0.5) {
-        title.style.color = "#0284c7"; // Azul más profundo en día
-      } else {
-        title.style.color = "#38bdf8"; // Azul brillante en noche
-      }
+      title.style.color = ratio > 0.5 ? "#0284c7" : "#38bdf8";
 
-      // Tarjetas internas de control
       const subCards = document.querySelectorAll('.control-card, .status-badge');
       subCards.forEach(c => {
-        if (ratio > 0.5) {
-          c.style.background = "#f1f5f9"; // Gris muy claro
-        } else {
-          c.style.background = "#1f2937"; // Gris oscuro
-        }
+        c.style.background = ratio > 0.5 ? "#f1f5f9" : "#1f2937";
       });
 
-      // Botones de acción (▲ y ▼)
       const actionBtns = document.querySelectorAll('.btn-action');
       actionBtns.forEach(b => {
         if (ratio > 0.5) {
@@ -381,11 +355,19 @@
       });
     }
 
+    function handleConnectClick() {
+      if (currentMode === "BLE") {
+        toggleConnect();
+      } else {
+        connectCloud();
+      }
+    }
+
     async function toggleConnect() {
       if (bluetoothDevice && bluetoothDevice.gatt.connected) {
         bluetoothDevice.gatt.disconnect();
-        updateStatus(false);
-        log("Desconectado.");
+        updateStatus(false, "BLE");
+        log("Desconectado de Bluetooth.");
         return;
       }
 
@@ -396,48 +378,58 @@
           optionalServices: [SERVICE_UUID]
         });
 
-        log("Conectando...");
+        log("Conectando a Bluetooth...");
         const server = await bluetoothDevice.gatt.connect();
         const service = await server.getPrimaryService(SERVICE_UUID);
         rxCharacteristic = await service.getCharacteristic(CHARACTERISTIC_UUID_RX);
 
-        updateStatus(true);
-        log("¡Conectado exitosamente!");
+        updateStatus(true, "BLE");
+        log("¡Conectado exitosamente por BLE!");
+        
+        // Sincronizar automáticamente reloj al conectar por Bluetooth
+        syncCurrentTime();
       } catch (error) {
-        log(`Error: ${error.message || error}`);
-        updateStatus(false);
+        log(`Error BLE: ${error.message || error}`);
+        updateStatus(false, "BLE");
       }
     }
 
-    function updateStatus(connected) {
-      const ind = document.getElementById('status-indicator');
-      const txt = document.getElementById('status-text');
-      const btn = document.getElementById('connect-btn');
-
-      if (connected) {
-        ind.style.background = '#22c55e';
-        txt.innerText = 'Conectado (BLE)';
-        txt.style.color = '#22c55e';
-        btn.innerText = '❌ Desconectar';
-        btn.style.background = '#ef4444';
-      } else {
-        ind.style.background = '#ef4444';
-        txt.innerText = 'Desconectado';
-        txt.style.color = '#9ca3af';
-        btn.innerText = '🔗 Conectar Bluetooth';
-        btn.style.background = '#2563eb';
+    function connectCloud() {
+      if (mqttClient && mqttClient.connected) {
+        mqttClient.end();
+        updateStatus(false, "CLOUD");
+        log("Desconectado de la Nube.");
+        return;
       }
+
+      log("Conectando al servidor Cloud (HiveMQ WSS)...");
+      mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+
+      mqttClient.on('connect', () => {
+        log("¡Conectado exitosamente a la Nube (Cloud)! ☁️");
+        updateStatus(true, "CLOUD");
+      });
+
+      mqttClient.on('error', (err) => {
+        log(`Error Cloud: ${err.message}`);
+        updateStatus(false, "CLOUD");
+      });
+
+      mqttClient.on('offline', () => {
+        log("Servidor Cloud fuera de línea.");
+        updateStatus(false, "CLOUD");
+      });
     }
-    // Agrega esto justo cuando la conexión BLE sea exitosa en index.html:
-function syncCurrentTime() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  const s = String(now.getSeconds()).padStart(2, '0');
-  
-  log(`Sincronizando reloj con iPhone: ${h}:${m}:${s}`);
-  sendCommand(`T:${h}:${m}:${s}`);
-}
+
+    function syncCurrentTime() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      
+      log(`Sincronizando hora con ESP32: ${h}:${m}:${s}`);
+      sendCommand(`T:${h}:${m}:${s}`);
+    }
 
     async function sendCommand(cmd) {
       if (currentMode === "BLE") {
@@ -450,10 +442,15 @@ function syncCurrentTime() {
           await rxCharacteristic.writeValue(encoder.encode(cmd));
           log(`Enviado (BLE): ${cmd}`);
         } catch (error) {
-          log(`Error enviando: ${error.message}`);
+          log(`Error enviando BLE: ${error.message}`);
         }
       } else {
-        log(`Enviado (Cloud/MQTT): ${cmd}`);
+        if (!mqttClient || !mqttClient.connected) {
+          log("Aviso: No estás conectado a la Nube.");
+          return;
+        }
+        mqttClient.publish('lumiblind/comando', cmd);
+        log(`Enviado (Cloud MQTT): ${cmd}`);
       }
     }
 
@@ -471,13 +468,57 @@ function syncCurrentTime() {
     function saveSchedule() {
       const openTime = document.getElementById('time-open').value;
       const closeTime = document.getElementById('time-close').value;
-      log(`Horarios guardados: Abrir ${openTime} | Cerrar ${closeTime}`);
+      log(`Guardando horario: Abrir ${openTime} | Cerrar ${closeTime}`);
       sendCommand(`H:${openTime}-${closeTime}`);
+    }
+
+    function saveWifiCredentials() {
+      const ssid = document.getElementById('wifi-ssid').value;
+      const pass = document.getElementById('wifi-pass').value;
+
+      if (!ssid) {
+        alert("Por favor ingresa el nombre de la red Wi-Fi.");
+        return;
+      }
+
+      log(`Enviando Wi-Fi: ${ssid}...`);
+      sendCommand(`W:${ssid},${pass}`);
     }
 
     function switchConnMode(mode) {
       currentMode = mode;
-      log(`Cambio a modo: ${mode}`);
+      log(`Modo cambiado a: ${mode}`);
+      const btn = document.getElementById('connect-btn');
+
+      if (mode === "CLOUD") {
+        btn.innerText = "☁️ Conectar Nube (Cloud)";
+        btn.style.background = "#0284c7";
+        updateStatus(mqttClient && mqttClient.connected, "CLOUD");
+      } else {
+        btn.innerText = "🔗 Conectar Bluetooth";
+        btn.style.background = "#2563eb";
+        updateStatus(bluetoothDevice && bluetoothDevice.gatt.connected, "BLE");
+      }
+    }
+
+    function updateStatus(connected, type) {
+      const ind = document.getElementById('status-indicator');
+      const txt = document.getElementById('status-text');
+      const btn = document.getElementById('connect-btn');
+
+      if (connected) {
+        ind.style.background = '#22c55e';
+        txt.innerText = type === "BLE" ? 'Conectado (BLE)' : 'Conectado (Cloud ☁️)';
+        txt.style.color = '#22c55e';
+        btn.innerText = type === "BLE" ? '❌ Desconectar BLE' : '❌ Desconectar Nube';
+        btn.style.background = '#ef4444';
+      } else {
+        ind.style.background = '#ef4444';
+        txt.innerText = 'Desconectado';
+        txt.style.color = '#9ca3af';
+        btn.innerText = type === "BLE" ? '🔗 Conectar Bluetooth' : '☁️ Conectar Nube (Cloud)';
+        btn.style.background = type === "BLE" ? '#2563eb' : '#0284c7';
+      }
     }
 
     function toggleAutoMode(active) {
@@ -492,115 +533,9 @@ function syncCurrentTime() {
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4').then(reg => reg.update()).catch(err => console.error(err));
+        navigator.serviceWorker.register('./sw.js?v=5').then(reg => reg.update()).catch(err => console.error(err));
       });
     }
-
-    function saveWifiCredentials() {
-  const ssid = document.getElementById('wifi-ssid').value;
-  const pass = document.getElementById('wifi-pass').value;
-
-  if (!ssid) {
-    alert("Por favor ingresa el nombre de la red Wi-Fi.");
-    return;
-  }
-
-  log(`Enviando credenciales Wi-Fi: ${ssid}...`);
-  sendCommand(`W:${ssid},${pass}`);
-}
-
-let mqttClient = null;
-
-// Conectar a la Nube (Broker MQTT por WebSockets)
-function connectCloud() {
-  if (mqttClient && mqttClient.connected) {
-    log("Ya estás conectado a la Nube.");
-    return;
-  }
-
-  log("Conectando al servidor Cloud (HiveMQ WSS)...");
-  
-  // Conexión por WebSocket Seguro (puerto 8884)
-  mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
-
-  mqttClient.on('connect', () => {
-    log("¡Conectado exitosamente a la Nube (Cloud)!");
-    updateCloudStatus(true);
-  });
-
-  mqttClient.on('error', (err) => {
-    log(`Error Cloud: ${err.message}`);
-    updateCloudStatus(false);
-  });
-
-  mqttClient.on('offline', () => {
-    log("Servidor Cloud fuera de línea.");
-    updateCloudStatus(false);
-  });
-}
-
-// Función unificada para enviar comandos por BLE o Cloud
-async function sendCommand(cmd) {
-  if (currentMode === "BLE") {
-    // --- ENVÍO POR BLUETOOTH LOCAL ---
-    if (!rxCharacteristic) {
-      log("Aviso: Sin conexión BLE activa.");
-      return;
-    }
-    try {
-      const encoder = new TextEncoder();
-      await rxCharacteristic.writeValue(encoder.encode(cmd));
-      log(`Enviado (BLE): ${cmd}`);
-    } catch (error) {
-      log(`Error enviando BLE: ${error.message}`);
-    }
-  } else {
-    // --- ENVÍO POR LA NUBE (MQTT) ---
-    if (!mqttClient || !mqttClient.connected) {
-      log("Error: No estás conectado a la Nube. Presiona 'Conectar Cloud'.");
-      return;
-    }
-    mqttClient.publish('lumiblind/comando', cmd);
-    log(`Enviado a la Nube (Topic: lumiblind/comando): ${cmd}`);
-  }
-}
-
-// Cambiar entre modo BLE y Cloud desde el menú desplegable
-function switchConnMode(mode) {
-  currentMode = mode;
-  log(`Modo cambiado a: ${mode}`);
-  const btn = document.getElementById('connect-btn');
-
-  if (mode === "CLOUD") {
-    btn.innerText = "☁️ Conectar Nube (Cloud)";
-    btn.onclick = connectCloud;
-    btn.style.background = "#0284c7";
-  } else {
-    btn.innerText = "🔗 Conectar Bluetooth";
-    btn.onclick = toggleConnect;
-    btn.style.background = "#2563eb";
-  }
-}
-
-function updateCloudStatus(connected) {
-  const ind = document.getElementById('status-indicator');
-  const txt = document.getElementById('status-text');
-  const btn = document.getElementById('connect-btn');
-
-  if (connected) {
-    ind.style.background = '#22c55e';
-    txt.innerText = 'Conectado (Cloud ☁️)';
-    txt.style.color = '#22c55e';
-    btn.innerText = '❌ Desconectar Nube';
-    btn.style.background = '#ef4444';
-  } else {
-    ind.style.background = '#ef4444';
-    txt.innerText = 'Desconectado (Cloud)';
-    txt.style.color = '#9ca3af';
-    btn.innerText = '☁️ Conectar Nube (Cloud)';
-    btn.style.background = '#0284c7';
-  }
-}
   </script>
 </body>
 </html>
