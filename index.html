@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<!-- Librería MQTT para conexión Cloud vía WebSockets -->
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LumiBlind v2.0 - Control de Persiana</title>
@@ -495,6 +497,99 @@
 
   log(`Enviando credenciales Wi-Fi: ${ssid}...`);
   sendCommand(`W:${ssid},${pass}`);
+}
+
+let mqttClient = null;
+
+// Conectar a la Nube (Broker MQTT por WebSockets)
+function connectCloud() {
+  if (mqttClient && mqttClient.connected) {
+    log("Ya estás conectado a la Nube.");
+    return;
+  }
+
+  log("Conectando al servidor Cloud (HiveMQ WSS)...");
+  
+  // Conexión por WebSocket Seguro (puerto 8884)
+  mqttClient = mqtt.connect('wss://broker.hivemq.com:8884/mqtt');
+
+  mqttClient.on('connect', () => {
+    log("¡Conectado exitosamente a la Nube (Cloud)!");
+    updateCloudStatus(true);
+  });
+
+  mqttClient.on('error', (err) => {
+    log(`Error Cloud: ${err.message}`);
+    updateCloudStatus(false);
+  });
+
+  mqttClient.on('offline', () => {
+    log("Servidor Cloud fuera de línea.");
+    updateCloudStatus(false);
+  });
+}
+
+// Función unificada para enviar comandos por BLE o Cloud
+async function sendCommand(cmd) {
+  if (currentMode === "BLE") {
+    // --- ENVÍO POR BLUETOOTH LOCAL ---
+    if (!rxCharacteristic) {
+      log("Aviso: Sin conexión BLE activa.");
+      return;
+    }
+    try {
+      const encoder = new TextEncoder();
+      await rxCharacteristic.writeValue(encoder.encode(cmd));
+      log(`Enviado (BLE): ${cmd}`);
+    } catch (error) {
+      log(`Error enviando BLE: ${error.message}`);
+    }
+  } else {
+    // --- ENVÍO POR LA NUBE (MQTT) ---
+    if (!mqttClient || !mqttClient.connected) {
+      log("Error: No estás conectado a la Nube. Presiona 'Conectar Cloud'.");
+      return;
+    }
+    mqttClient.publish('lumiblind/comando', cmd);
+    log(`Enviado a la Nube (Topic: lumiblind/comando): ${cmd}`);
+  }
+}
+
+// Cambiar entre modo BLE y Cloud desde el menú desplegable
+function switchConnMode(mode) {
+  currentMode = mode;
+  log(`Modo cambiado a: ${mode}`);
+  const btn = document.getElementById('connect-btn');
+
+  if (mode === "CLOUD") {
+    btn.innerText = "☁️ Conectar Nube (Cloud)";
+    btn.onclick = connectCloud;
+    btn.style.background = "#0284c7";
+  } else {
+    btn.innerText = "🔗 Conectar Bluetooth";
+    btn.onclick = toggleConnect;
+    btn.style.background = "#2563eb";
+  }
+}
+
+function updateCloudStatus(connected) {
+  const ind = document.getElementById('status-indicator');
+  const txt = document.getElementById('status-text');
+  const btn = document.getElementById('connect-btn');
+
+  if (connected) {
+    ind.style.background = '#22c55e';
+    txt.innerText = 'Conectado (Cloud ☁️)';
+    txt.style.color = '#22c55e';
+    btn.innerText = '❌ Desconectar Nube';
+    btn.style.background = '#ef4444';
+  } else {
+    ind.style.background = '#ef4444';
+    txt.innerText = 'Desconectado (Cloud)';
+    txt.style.color = '#9ca3af';
+    btn.innerText = '☁️ Conectar Nube (Cloud)';
+    btn.style.background = '#0284c7';
+  }
 }
   </script>
 </body>
