@@ -273,6 +273,16 @@
       <input type="range" id="threshold-slider" min="500" max="4000" step="100" value="2000" onchange="sendThreshold(this.value)" style="width: 100%; accent-color: #10b981;">
     </div>
 
+    <!-- Módulo de Configuración Wi-Fi para el Cliente -->
+<div class="control-card" id="card-wifi">
+  <label><span class="label-text">Configuración Wi-Fi (PWA)</span></label>
+  <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
+    <input type="text" id="wifi-ssid" placeholder="Nombre de tu red Wi-Fi (SSID)" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
+    <input type="password" id="wifi-pass" placeholder="Contraseña de Wi-Fi" style="background: #111827; border: 1px solid #374151; color: white; padding: 8px; border-radius: 8px; font-size: 0.85rem;">
+    <button class="btn btn-action" onclick="saveWifiCredentials()" style="background: #10b981; color: white; font-size: 0.85rem; padding: 8px;">📶 Guardar y Conectar Wi-Fi</button>
+  </div>
+</div>
+
     <div id="console-log" class="console-box">> LumiBlind v2.0 listo...</div>
   </div>
 
@@ -473,6 +483,19 @@
         navigator.serviceWorker.register('./sw.js?v=4').then(reg => reg.update()).catch(err => console.error(err));
       });
     }
+
+    function saveWifiCredentials() {
+  const ssid = document.getElementById('wifi-ssid').value;
+  const pass = document.getElementById('wifi-pass').value;
+
+  if (!ssid) {
+    alert("Por favor ingresa el nombre de la red Wi-Fi.");
+    return;
+  }
+
+  log(`Enviando credenciales Wi-Fi: ${ssid}...`);
+  sendCommand(`W:${ssid},${pass}`);
+}
   </script>
 </body>
 </html>
