@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LumiBlind - Control de Persiana</title>
-  <link rel="manifest" href="manifest.json?v=2">
-  <meta name="theme-color" content="#0f172a">
+  <title>LumiBlind v2.0 - Control de Persiana</title>
+  <link rel="manifest" href="manifest.json?v=3">
+  <meta name="theme-color" content="#090d16">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -18,41 +18,58 @@
       justify-content: center;
       min-height: 100vh;
       align-items: center;
+      transition: background 0.5s ease;
     }
     .card {
       width: 100%;
-      max-width: 420px;
+      max-width: 440px;
       background: #111827;
       border: 1px solid #1f2937;
       border-radius: 24px;
-      padding: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+      transition: box-shadow 0.5s ease, border-color 0.5s ease;
     }
+
     .header {
       text-align: center;
       margin-bottom: 16px;
     }
-    .header h2 { margin: 0; color: #38bdf8; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.5px; }
+    .header h2 { margin: 0; color: #38bdf8; font-size: 1.6rem; font-weight: 700; }
     .header p { margin: 4px 0 0; color: #9ca3af; font-size: 0.8rem; }
 
-    /* VENTANA Y PERSIANA ANIMADA REDISEÑADA */
+    /* VENTANA CON LUZ PROGRESIVA */
     .window-container {
       width: 100%;
-      height: 190px;
-      background: linear-gradient(180deg, #38bdf8 0%, #f59e0b 100%);
+      height: 200px;
+      background: #020617;
       border: 8px solid #374151;
-      border-radius: 16px;
+      border-radius: 18px;
       position: relative;
       overflow: hidden;
       margin-bottom: 16px;
-      box-shadow: inset 0 0 20px rgba(0,0,0,0.4);
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+      transition: background 0.5s ease;
     }
+    
+    /* Resplandor del sol entrando por la ventana */
+    .sun-light {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 20%, rgba(253, 224, 71, 0.9) 0%, rgba(56, 189, 248, 0.7) 60%, rgba(15, 23, 42, 0.2) 100%);
+      opacity: 0; /* Controlado por JS */
+      transition: opacity 0.5s ease;
+    }
+
     .blind-curtain {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: 100%; /* 100% = totalmente bajada */
+      height: 100%; /* 100% = totalmente cerrada */
       background: repeating-linear-gradient(
         0deg,
         #1f2937,
@@ -62,27 +79,27 @@
       );
       transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       border-bottom: 6px solid #030712;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.8);
+      z-index: 2;
     }
 
     .status-badge {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
+      justify-content: space-between;
       background: #1f2937;
-      padding: 8px 12px;
-      border-radius: 20px;
+      padding: 8px 14px;
+      border-radius: 14px;
       margin-bottom: 16px;
-      font-size: 0.85rem;
-      font-weight: 500;
+      font-size: 0.82rem;
     }
     .status-dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: #ef4444;
-      transition: background 0.3s;
+      display: inline-block;
+      margin-right: 6px;
     }
 
     .btn {
@@ -96,16 +113,15 @@
       transition: all 0.2s;
     }
     .btn-connect { background: #2563eb; color: white; margin-bottom: 12px; }
-    .btn-connect:active { transform: scale(0.98); }
+    .btn-action { background: #374151; color: #f9fafb; }
+    .btn-action:active { background: #4b5563; }
 
     .controls-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
-    .btn-action { background: #374151; color: #f9fafb; }
-    .btn-action:active { background: #4b5563; }
 
     .control-card {
       background: #1f2937;
@@ -115,10 +131,32 @@
     }
     .control-card label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
 
-    .switch-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .time-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .time-inputs input {
+      background: #111827;
+      border: 1px solid #374151;
+      color: white;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      width: 100%;
+    }
+
+    .alert-banner {
+      display: none;
+      background: #7f1d1d;
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+      text-align: center;
     }
 
     .console-box {
@@ -126,7 +164,7 @@
       border: 1px solid #1f2937;
       border-radius: 10px;
       padding: 8px 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family: monospace;
       font-size: 0.72rem;
       color: #38bdf8;
       height: 60px;
@@ -135,20 +173,35 @@
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="card" id="app-card">
     <div class="header">
       <h2>LumiBlind v2.0</h2>
-      <p>Sistema Inteligente de Persiana BLE</p>
+      <p>Sistema Inteligente de Persiana</p>
     </div>
 
-    <!-- Animación de Persiana Virtual -->
-    <div class="window-container">
+    <!-- Banner de Alerta de Bloqueo -->
+    <div id="alert-banner" class="alert-banner">
+      ⚠️ <strong>¡ALERTA DE SEGURIDAD!</strong> Motor bloqueado por obstáculo.
+    </div>
+
+    <!-- Ventana con Luz Progresiva -->
+    <div class="window-container" id="window-bg">
+      <div id="sun-light" class="sun-light"></div>
       <div id="blind-curtain" class="blind-curtain"></div>
     </div>
 
+    <!-- Estado y Modo de Conexión -->
     <div class="status-badge">
-      <div id="status-indicator" class="status-dot"></div>
-      <span id="status-text" style="color: #9ca3af;">Desconectado</span>
+      <div>
+        <span id="status-indicator" class="status-dot"></span>
+        <span id="status-text" style="color: #9ca3af;">Desconectado</span>
+      </div>
+      <div>
+        <select id="conn-mode" onchange="switchConnMode(this.value)" style="background: #111827; color: #38bdf8; border: 1px solid #374151; border-radius: 6px; padding: 2px 6px; font-size: 0.75rem;">
+          <option value="BLE">Modo BLE (Local)</option>
+          <option value="CLOUD">Modo Cloud (Nube)</option>
+        </select>
+      </div>
     </div>
 
     <button id="connect-btn" class="btn btn-connect" onclick="toggleConnect()">🔗 Conectar Bluetooth</button>
@@ -158,6 +211,7 @@
       <button class="btn btn-action" onclick="setBlindPosition(0, 'C')">▼ Cerrar (0%)</button>
     </div>
 
+    <!-- Posición Manual con Luz Progresiva -->
     <div class="control-card">
       <label>
         <span>Posición manual</span>
@@ -166,14 +220,30 @@
       <input type="range" id="pos-slider" min="0" max="100" value="0" oninput="updateVisualBlind(this.value)" onchange="sendSliderPosition(this.value)" style="width: 100%; accent-color: #38bdf8;">
     </div>
 
-    <div class="control-card switch-row">
+    <!-- Programación de Horarios Rutinarios -->
+    <div class="control-card">
+      <label><span>Programación de Horarios (NVS)</span></label>
+      <div class="time-inputs">
+        <div>
+          <span style="font-size: 0.75rem; color: #9ca3af;">Abrir a las:</span>
+          <input type="time" id="time-open" value="07:00" onchange="saveSchedule()">
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; color: #9ca3af;">Cerrar a las:</span>
+          <input type="time" id="time-close" value="19:00" onchange="saveSchedule()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Modo Automático y Umbral LDR -->
+    <div class="control-card" style="display: flex; justify-content: space-between; align-items: center;">
       <span style="font-size: 0.85rem; color: #f9fafb; font-weight: 500;">Modo Automático (LDR)</span>
       <input type="checkbox" id="auto-mode" onchange="toggleAutoMode(this.checked)" style="width: 18px; height: 18px; accent-color: #10b981;">
     </div>
 
     <div class="control-card">
       <label>
-        <span>Umbral de luz</span>
+        <span>Umbral de luz (LDR)</span>
         <strong id="threshold-val" style="color: #10b981;">2000</strong>
       </label>
       <input type="range" id="threshold-slider" min="500" max="4000" step="100" value="2000" onchange="sendThreshold(this.value)" style="width: 100%; accent-color: #10b981;">
@@ -188,6 +258,7 @@
 
     let bluetoothDevice;
     let rxCharacteristic;
+    let currentMode = "BLE";
 
     function log(msg) {
       const consoleEl = document.getElementById('console-log');
@@ -195,10 +266,35 @@
       consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
+    // Pedir permisos de notificaciones para alertas de bloqueo del motor
+    if ("Notification" in window) {
+      Notification.requestPermission();
+    }
+
+    // EFECTO DE LUZ PROGRESIVA SEGÚN LA POSICIÓN
     function updateVisualBlind(percent) {
       document.getElementById('pos-val').innerText = `${percent}%`;
       const curtainHeight = 100 - percent;
       document.getElementById('blind-curtain').style.height = `${curtainHeight}%`;
+
+      // Calcular opacidad de la luz (0% = opacidad 0, 100% = opacidad 1)
+      const lightOpacity = percent / 100;
+      document.getElementById('sun-light').style.opacity = lightOpacity;
+
+      // Resplandor progresivo en la tarjeta y fondo de la pantalla
+      const card = document.getElementById('app-card');
+      const body = document.body;
+
+      if (percent > 0) {
+        const glowIntensity = (percent / 100) * 25;
+        card.style.boxShadow = `0 20px 50px rgba(56, 189, 248, ${(percent/100)*0.3})`;
+        card.style.borderColor = `rgba(56, 189, 248, ${(percent/100)*0.5})`;
+        body.style.background = `rgb(${9 + (percent*0.1)}, ${13 + (percent*0.2)}, ${22 + (percent*0.3)})`;
+      } else {
+        card.style.boxShadow = "0 20px 50px rgba(0,0,0,0.7)";
+        card.style.borderColor = "#1f2937";
+        body.style.background = "#090d16";
+      }
     }
 
     async function toggleConnect() {
@@ -236,7 +332,7 @@
 
       if (connected) {
         ind.style.background = '#22c55e';
-        txt.innerText = 'Conectado';
+        txt.innerText = 'Conectado (BLE)';
         txt.style.color = '#22c55e';
         btn.innerText = '❌ Desconectar';
         btn.style.background = '#ef4444';
@@ -250,16 +346,20 @@
     }
 
     async function sendCommand(cmd) {
-      if (!rxCharacteristic) {
-        log("Aviso: Sin conexión BLE activa.");
-        return;
-      }
-      try {
-        const encoder = new TextEncoder();
-        await rxCharacteristic.writeValue(encoder.encode(cmd));
-        log(`Enviado: ${cmd}`);
-      } catch (error) {
-        log(`Error enviando: ${error.message}`);
+      if (currentMode === "BLE") {
+        if (!rxCharacteristic) {
+          log("Aviso: Sin conexión BLE activa.");
+          return;
+        }
+        try {
+          const encoder = new TextEncoder();
+          await rxCharacteristic.writeValue(encoder.encode(cmd));
+          log(`Enviado (BLE): ${cmd}`);
+        } catch (error) {
+          log(`Error enviando: ${error.message}`);
+        }
+      } else {
+        log(`Enviado (Cloud/MQTT): ${cmd}`);
       }
     }
 
@@ -274,6 +374,30 @@
       sendCommand(`P${percent}`);
     }
 
+    function saveSchedule() {
+      const openTime = document.getElementById('time-open').value;
+      const closeTime = document.getElementById('time-close').value;
+      log(`Horarios guardados: Abrir ${openTime} | Cerrar ${closeTime}`);
+      sendCommand(`H:${openTime}-${closeTime}`);
+    }
+
+    function triggerMotorBlockAlert() {
+      document.getElementById('alert-banner').style.display = 'block';
+      log("⚠️ ALERTA: Bloqueo de motor detectado por sensor de corriente.");
+      
+      if (Notification.permission === "granted") {
+        new Notification("LumiBlind Alerta", {
+          body: "Se ha detenido el motor por detección de obstáculo mecánico.",
+          icon: "manifest.json"
+        });
+      }
+    }
+
+    function switchConnMode(mode) {
+      currentMode = mode;
+      log(`Cambio a modo: ${mode}`);
+    }
+
     function toggleAutoMode(active) {
       log(`Modo automático: ${active ? "activado" : "desactivado"}`);
       sendCommand(active ? 'M1' : 'M0');
@@ -284,12 +408,9 @@
       sendCommand(`U${val}`);
     }
 
-    // Registro del Service Worker v2 para forzar actualización
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=2').then(reg => {
-          reg.update(); // Forzar actualización de cache
-        }).catch(err => console.error(err));
+        navigator.serviceWorker.register('./sw.js?v=3').then(reg => reg.update()).catch(err => console.error(err));
       });
     }
   </script>
