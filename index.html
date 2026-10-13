@@ -4,10 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LumiBlind v2.0 - Control de Persiana</title>
-  <link rel="manifest" href="manifest.json?v=3">
+  <link rel="manifest" href="manifest.json?v=4">
   <meta name="theme-color" content="#090d16">
   <style>
     * { box-sizing: border-box; }
+    
+    /* Transición suave para toda la página */
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #090d16;
@@ -18,49 +20,63 @@
       justify-content: center;
       min-height: 100vh;
       align-items: center;
-      transition: background 0.5s ease;
+      transition: background 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* Tarjeta principal que también reacciona a la luz */
     .card {
       width: 100%;
       max-width: 440px;
       background: #111827;
       border: 1px solid #1f2937;
-      border-radius: 24px;
-      padding: 22px;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.7);
-      transition: box-shadow 0.5s ease, border-color 0.5s ease;
+      border-radius: 28px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     }
 
     .header {
       text-align: center;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
-    .header h2 { margin: 0; color: #38bdf8; font-size: 1.6rem; font-weight: 700; }
-    .header p { margin: 4px 0 0; color: #9ca3af; font-size: 0.8rem; }
+    .header h2 { 
+      margin: 0; 
+      color: #38bdf8; 
+      font-size: 1.6rem; 
+      font-weight: 800; 
+      transition: color 0.6s ease;
+    }
+    .header p { 
+      margin: 4px 0 0; 
+      color: #9ca3af; 
+      font-size: 0.8rem; 
+      transition: color 0.6s ease;
+    }
 
-    /* VENTANA CON LUZ PROGRESIVA */
+    /* VENTANA E ILUMINACIÓN DEL SOL */
     .window-container {
       width: 100%;
       height: 200px;
       background: #020617;
       border: 8px solid #374151;
-      border-radius: 18px;
+      border-radius: 20px;
       position: relative;
       overflow: hidden;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
       box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
-      transition: background 0.5s ease;
+      transition: border-color 0.6s ease, box-shadow 0.6s ease;
     }
     
-    /* Resplandor del sol entrando por la ventana */
     .sun-light {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle at 50% 20%, rgba(253, 224, 71, 0.9) 0%, rgba(56, 189, 248, 0.7) 60%, rgba(15, 23, 42, 0.2) 100%);
-      opacity: 0; /* Controlado por JS */
+      background: radial-gradient(circle at 50% 30%, #fef08a 0%, #38bdf8 60%, #e0f2fe 100%);
+      opacity: 0;
       transition: opacity 0.5s ease;
     }
 
@@ -69,7 +85,7 @@
       top: 0;
       left: 0;
       width: 100%;
-      height: 100%; /* 100% = totalmente cerrada */
+      height: 100%;
       background: repeating-linear-gradient(
         0deg,
         #1f2937,
@@ -88,10 +104,11 @@
       align-items: center;
       justify-content: space-between;
       background: #1f2937;
-      padding: 8px 14px;
+      padding: 10px 14px;
       border-radius: 14px;
       margin-bottom: 16px;
       font-size: 0.82rem;
+      transition: background 0.6s ease, color 0.6s ease;
     }
     .status-dot {
       width: 8px;
@@ -106,15 +123,15 @@
       width: 100%;
       padding: 12px;
       border: none;
-      border-radius: 12px;
-      font-weight: 600;
+      border-radius: 14px;
+      font-weight: 700;
       font-size: 0.95rem;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.3s ease;
     }
     .btn-connect { background: #2563eb; color: white; margin-bottom: 12px; }
     .btn-action { background: #374151; color: #f9fafb; }
-    .btn-action:active { background: #4b5563; }
+    .btn-action:active { transform: scale(0.98); }
 
     .controls-grid {
       display: grid;
@@ -123,13 +140,23 @@
       margin-bottom: 14px;
     }
 
+    /* TARJETAS DE CONTROL ADAPTABLES A LA LUZ */
     .control-card {
       background: #1f2937;
       padding: 12px 14px;
-      border-radius: 14px;
+      border-radius: 16px;
       margin-bottom: 12px;
+      transition: background 0.6s ease, color 0.6s ease;
     }
-    .control-card label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.8rem; color: #9ca3af; font-weight: 500; }
+    .control-card label { 
+      display: flex; 
+      justify-content: space-between; 
+      margin-bottom: 8px; 
+      font-size: 0.8rem; 
+      color: #9ca3af; 
+      font-weight: 600;
+      transition: color 0.6s ease;
+    }
 
     .time-inputs {
       display: grid;
@@ -142,9 +169,10 @@
       border: 1px solid #374151;
       color: white;
       padding: 8px;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 0.85rem;
       width: 100%;
+      transition: all 0.6s ease;
     }
 
     .alert-banner {
@@ -153,7 +181,7 @@
       border: 1px solid #ef4444;
       color: #fca5a5;
       padding: 10px;
-      border-radius: 10px;
+      border-radius: 12px;
       font-size: 0.8rem;
       margin-bottom: 12px;
       text-align: center;
@@ -162,36 +190,35 @@
     .console-box {
       background: #030712;
       border: 1px solid #1f2937;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 8px 10px;
       font-family: monospace;
       font-size: 0.72rem;
       color: #38bdf8;
       height: 60px;
       overflow-y: auto;
+      transition: all 0.6s ease;
     }
   </style>
 </head>
 <body>
   <div class="card" id="app-card">
     <div class="header">
-      <h2>LumiBlind v2.0</h2>
-      <p>Sistema Inteligente de Persiana</p>
+      <h2 id="app-title">LumiBlind v2.0</h2>
+      <p id="app-sub">Sistema Inteligente de Persiana</p>
     </div>
 
-    <!-- Banner de Alerta de Bloqueo -->
     <div id="alert-banner" class="alert-banner">
       ⚠️ <strong>¡ALERTA DE SEGURIDAD!</strong> Motor bloqueado por obstáculo.
     </div>
 
-    <!-- Ventana con Luz Progresiva -->
+    <!-- Ventana con Ilustración de Sol -->
     <div class="window-container" id="window-bg">
       <div id="sun-light" class="sun-light"></div>
       <div id="blind-curtain" class="blind-curtain"></div>
     </div>
 
-    <!-- Estado y Modo de Conexión -->
-    <div class="status-badge">
+    <div class="status-badge" id="status-badge">
       <div>
         <span id="status-indicator" class="status-dot"></span>
         <span id="status-text" style="color: #9ca3af;">Desconectado</span>
@@ -207,43 +234,40 @@
     <button id="connect-btn" class="btn btn-connect" onclick="toggleConnect()">🔗 Conectar Bluetooth</button>
 
     <div class="controls-grid">
-      <button class="btn btn-action" onclick="setBlindPosition(100, 'O')">▲ Abrir (100%)</button>
-      <button class="btn btn-action" onclick="setBlindPosition(0, 'C')">▼ Cerrar (0%)</button>
+      <button class="btn btn-action" id="btn-open" onclick="setBlindPosition(100, 'O')">▲ Abrir (100%)</button>
+      <button class="btn btn-action" id="btn-close" onclick="setBlindPosition(0, 'C')">▼ Cerrar (0%)</button>
     </div>
 
-    <!-- Posición Manual con Luz Progresiva -->
-    <div class="control-card">
+    <div class="control-card" id="card-pos">
       <label>
-        <span>Posición manual</span>
+        <span class="label-text">Posición manual</span>
         <strong id="pos-val" style="color: #38bdf8;">0%</strong>
       </label>
       <input type="range" id="pos-slider" min="0" max="100" value="0" oninput="updateVisualBlind(this.value)" onchange="sendSliderPosition(this.value)" style="width: 100%; accent-color: #38bdf8;">
     </div>
 
-    <!-- Programación de Horarios Rutinarios -->
-    <div class="control-card">
-      <label><span>Programación de Horarios (NVS)</span></label>
+    <div class="control-card" id="card-schedule">
+      <label><span class="label-text">Programación de Horarios (NVS)</span></label>
       <div class="time-inputs">
         <div>
-          <span style="font-size: 0.75rem; color: #9ca3af;">Abrir a las:</span>
+          <span class="label-text" style="font-size: 0.75rem;">Abrir a las:</span>
           <input type="time" id="time-open" value="07:00" onchange="saveSchedule()">
         </div>
         <div>
-          <span style="font-size: 0.75rem; color: #9ca3af;">Cerrar a las:</span>
+          <span class="label-text" style="font-size: 0.75rem;">Cerrar a las:</span>
           <input type="time" id="time-close" value="19:00" onchange="saveSchedule()">
         </div>
       </div>
     </div>
 
-    <!-- Modo Automático y Umbral LDR -->
-    <div class="control-card" style="display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 0.85rem; color: #f9fafb; font-weight: 500;">Modo Automático (LDR)</span>
+    <div class="control-card" id="card-auto" style="display: flex; justify-content: space-between; align-items: center;">
+      <span class="label-text" style="font-size: 0.85rem; font-weight: 500;">Modo Automático (LDR)</span>
       <input type="checkbox" id="auto-mode" onchange="toggleAutoMode(this.checked)" style="width: 18px; height: 18px; accent-color: #10b981;">
     </div>
 
-    <div class="control-card">
+    <div class="control-card" id="card-threshold">
       <label>
-        <span>Umbral de luz (LDR)</span>
+        <span class="label-text">Umbral de luz (LDR)</span>
         <strong id="threshold-val" style="color: #10b981;">2000</strong>
       </label>
       <input type="range" id="threshold-slider" min="500" max="4000" step="100" value="2000" onchange="sendThreshold(this.value)" style="width: 100%; accent-color: #10b981;">
@@ -266,35 +290,83 @@
       consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
-    // Pedir permisos de notificaciones para alertas de bloqueo del motor
     if ("Notification" in window) {
       Notification.requestPermission();
     }
 
-    // EFECTO DE LUZ PROGRESIVA SEGÚN LA POSICIÓN
+    // ILUMINACIÓN GLOBAL PROGRESIVA DE TODA LA PÁGINA Y PANTALLA
     function updateVisualBlind(percent) {
       document.getElementById('pos-val').innerText = `${percent}%`;
       const curtainHeight = 100 - percent;
       document.getElementById('blind-curtain').style.height = `${curtainHeight}%`;
 
-      // Calcular opacidad de la luz (0% = opacidad 0, 100% = opacidad 1)
+      // Opacidad del sol dentro de la ventana
       const lightOpacity = percent / 100;
       document.getElementById('sun-light').style.opacity = lightOpacity;
 
-      // Resplandor progresivo en la tarjeta y fondo de la pantalla
-      const card = document.getElementById('app-card');
-      const body = document.body;
+      // CALCULAR COLORES PROGRESIVOS (DE NOCHE A DÍA)
+      const ratio = percent / 100;
 
+      // Fondo de la página completo: de casi negro (#090d16) a blanco luz de día (#f8fafc)
+      const rBg = Math.round(9 + (239 * ratio));
+      const gBg = Math.round(13 + (237 * ratio));
+      const bBg = Math.round(22 + (230 * ratio));
+      document.body.style.background = `rgb(${rBg}, ${gBg}, ${bBg})`;
+
+      // Tarjeta principal: de gris oscuro (#111827) a blanco puro pulido (#ffffff)
+      const rCard = Math.round(17 + (238 * ratio));
+      const gCard = Math.round(24 + (231 * ratio));
+      const bCard = Math.round(39 + (216 * ratio));
+      const card = document.getElementById('app-card');
+      card.style.background = `rgb(${rCard}, ${gCard}, ${bCard})`;
+
+      // Sombras de resplandor solar dorado/azul
       if (percent > 0) {
-        const glowIntensity = (percent / 100) * 25;
-        card.style.boxShadow = `0 20px 50px rgba(56, 189, 248, ${(percent/100)*0.3})`;
-        card.style.borderColor = `rgba(56, 189, 248, ${(percent/100)*0.5})`;
-        body.style.background = `rgb(${9 + (percent*0.1)}, ${13 + (percent*0.2)}, ${22 + (percent*0.3)})`;
+        card.style.boxShadow = `0 20px 60px rgba(251, 191, 36, ${0.15 * ratio}), 0 10px 30px rgba(56, 189, 248, ${0.2 * ratio})`;
+        card.style.borderColor = `rgba(251, 191, 36, ${0.4 * ratio})`;
       } else {
-        card.style.boxShadow = "0 20px 50px rgba(0,0,0,0.7)";
+        card.style.boxShadow = "0 20px 50px rgba(0,0,0,0.8)";
         card.style.borderColor = "#1f2937";
-        body.style.background = "#090d16";
       }
+
+      // Cambiar textos e insumos de oscuro a contraste claro
+      const textElements = document.querySelectorAll('.label-text, .header p');
+      textElements.forEach(el => {
+        if (ratio > 0.5) {
+          el.style.color = "#4b5563"; // Texto gris oscuro en día
+        } else {
+          el.style.color = "#9ca3af"; // Texto gris claro en noche
+        }
+      });
+
+      const title = document.getElementById('app-title');
+      if (ratio > 0.5) {
+        title.style.color = "#0284c7"; // Azul más profundo en día
+      } else {
+        title.style.color = "#38bdf8"; // Azul brillante en noche
+      }
+
+      // Tarjetas internas de control
+      const subCards = document.querySelectorAll('.control-card, .status-badge');
+      subCards.forEach(c => {
+        if (ratio > 0.5) {
+          c.style.background = "#f1f5f9"; // Gris muy claro
+        } else {
+          c.style.background = "#1f2937"; // Gris oscuro
+        }
+      });
+
+      // Botones de acción (▲ y ▼)
+      const actionBtns = document.querySelectorAll('.btn-action');
+      actionBtns.forEach(b => {
+        if (ratio > 0.5) {
+          b.style.background = "#e2e8f0";
+          b.style.color = "#0f172a";
+        } else {
+          b.style.background = "#374151";
+          b.style.color = "#f9fafb";
+        }
+      });
     }
 
     async function toggleConnect() {
@@ -381,18 +453,6 @@
       sendCommand(`H:${openTime}-${closeTime}`);
     }
 
-    function triggerMotorBlockAlert() {
-      document.getElementById('alert-banner').style.display = 'block';
-      log("⚠️ ALERTA: Bloqueo de motor detectado por sensor de corriente.");
-      
-      if (Notification.permission === "granted") {
-        new Notification("LumiBlind Alerta", {
-          body: "Se ha detenido el motor por detección de obstáculo mecánico.",
-          icon: "manifest.json"
-        });
-      }
-    }
-
     function switchConnMode(mode) {
       currentMode = mode;
       log(`Cambio a modo: ${mode}`);
@@ -410,7 +470,7 @@
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=3').then(reg => reg.update()).catch(err => console.error(err));
+        navigator.serviceWorker.register('./sw.js?v=4').then(reg => reg.update()).catch(err => console.error(err));
       });
     }
   </script>
