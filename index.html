@@ -428,6 +428,16 @@
         btn.style.background = '#2563eb';
       }
     }
+    // Agrega esto justo cuando la conexión BLE sea exitosa en index.html:
+function syncCurrentTime() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2, '0');
+  const m = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  
+  log(`Sincronizando reloj con iPhone: ${h}:${m}:${s}`);
+  sendCommand(`T:${h}:${m}:${s}`);
+}
 
     async function sendCommand(cmd) {
       if (currentMode === "BLE") {
